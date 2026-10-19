@@ -1,0 +1,4 @@
+interface:
+  display_name: "科研论文中英对照"
+  short_description: "严谨翻译科研论文，保持中英段落对应，核对术语、公式、数字与引用"
+  default_prompt: "使用 $research-bilingual-translation 翻译并核对这篇论文，按段提供中英对照，保留公式、数据、引用和不确定性。"

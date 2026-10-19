@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "frozenOn": "2026-10-18",
+  "corpusVersion": "paper-corpus-v1",
+  "reviewStatus": "pending-human-blind-review",
+  "paragraphs": 200,
+  "papers": [
+    {
+      "id": "umap",
+      "discipline": "computing",
+      "title": "UMAP: Uniform Manifold Approximation and Projection",
+      "doi": "10.21105/joss.00861",
+      "url": "https://doi.org/10.21105/joss.00861",
+      "license": "CC BY 4.0",
+      "sha256": "f6119914907035ade40bc369f5bcb5ae33da64689f1bd35ff032c86d844143d2",
+      "pages": 2,
+      "paragraphs": 5
+    },
+    {
+      "id": "fair",
+      "discipline": "data-science",
+      "title": "The FAIR Guiding Principles for scientific data management and stewardship",
+      "doi": "10.1038/sdata.2016.18",
+      "url": "https://doi.org/10.1038/sdata.2016.18",
+      "license": "CC BY 4.0",
+      "sha256": "cdddd9f4808f7e3e1f013139c3915ef4d7cdccb008fa947ef5f72b4c7b6ffde7",
+      "pages": 9,
+      "paragraphs": 23
+    },
+    {
+      "id": "literature-review",
+      "discipline": "computational-biology",
+      "title": "Ten Simple Rules for Writing a Literature Review",
+      "doi": "10.1371/journal.pcbi.1003149",
+      "url": "https://doi.org/10.1371/journal.pcbi.1003149",
+      "license": "CC BY",
+      "sha256": "c8b15037bfc77e25368ee210837f321eceb4869f12c1774ed139215167746b59",
+      "pages": 4,
+      "paragraphs": 23
+    },
+    {
+      "id": "pycs3",
+      "discipline": "astronomy",
+      "title": "PyCS3: A Python toolbox for time-delay measurements in lensed quasars",
+      "doi": "10.21105/joss.02654",
+      "url": "https://doi.org/10.21105/joss.02654",
+      "license": "CC BY 4.0",
+      "sha256": "75b5385e078ec9729803bc82d40da75b327f973ad0933551a468716f315d38b9",
+      "pages": 4,
+      "paragraphs": 23
+    },
+    {
+      "id": "bioscrape",
+      "discipline": "biology",
+      "title": "Fast and flexible simulation and parameter estimation for synthetic biology using bioscrape",
+      "doi": "10.21105/joss.05057",
+      "url": "https://doi.org/10.21105/joss.05057",
+      "license": "CC BY 4.0",
+      "sha256": "013f5d1e3b040293f06e7aef7b74b4fd3b4bf5fdea71f7baffe4f39ae9093cf5",
+      "pages": 5,
+      "paragraphs": 22
+    },
+    {
+      "id": "nctoolkit",
+      "discipline": "earth-science",
+      "title": "nctoolkit: A Python package for netCDF analysis and post-processing",
+      "doi": "10.21105/joss.05494",
+      "url": "https://doi.org/10.21105/joss.05494",
+      "license": "CC BY 4.0",
+      "sha256": "df40ca01d136ab85e0862d62edc890165e6f5d4083d2514cfbebc808dfdd5e5c",
+      "pages": 4,
+      "paragraphs": 22
+    },
+    {
+      "id": "topopyscale",
+      "discipline": "earth-science",
+      "title": "TopoPyScale: A Python Package for Hillslope Climate Downscaling",
+      "doi": "10.21105/joss.05059",
+      "url": "https://doi.org/10.21105/joss.05059",
+      "license": "CC BY 4.0",
+      "sha256": "d4e8e5603bc0a17fa1bfb76fa74952c9e92ff4f3569c35061cd7ca62e4ec0e07",
+      "pages": 6,
+      "paragraphs": 22
+    },
+    {
+      "id": "clouddrift",
+      "discipline": "earth-science",
+      "title": "Clouddrift: a Python package to accelerate the use of Lagrangian data for atmospheric, oceanic, and climate sciences",
+      "doi": "10.21105/joss.06742",
+      "url": "https://doi.org/10.21105/joss.06742",
+      "license": "CC BY 4.0",
+      "sha256": "593f4116cc5ab4f372f378ed651a4cd8bb6f956edaf89ab53d079215aa77d487",
+      "pages": 4,
+      "paragraphs": 22
+    },
+    {
+      "id": "pypromice",
+      "discipline": "earth-science",
+      "title": "pypromice: A Python package for processing automated weather station data",
+      "doi": "10.21105/joss.05298",
+      "url": "https://doi.org/10.21105/joss.05298",
+      "license": "CC BY 4.0",
+      "sha256": "dbcf5f4ad7be8780e7f8ad3ce75c684cdafc22e893240a485a0558f455579c67",
+      "pages": 6,
+      "paragraphs": 22
+    },
+    {
+      "id": "climlab",
+      "discipline": "earth-science",
+      "title": "CLIMLAB: a Python toolkit for interactive, process-oriented climate modeling",
+      "doi": "10.21105/joss.00659",
+      "url": "https://doi.org/10.21105/joss.00659",
+      "license": "CC BY 4.0",
+      "sha256": "873e56f0f8d47ddb5b4a5e91ceb936dbb4cb86f0dbac926714154aaa24b7f02e",
+      "pages": 2,
+      "paragraphs": 16
+    }
+  ]
+}

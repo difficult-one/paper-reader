@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "maintenanceSource": "paper-reader/skills/research-bilingual-translation",
+  "translationPolicy": "research-cache-v2-5ae419be29fd43e1a3984fd7689e39f0a4bc7324651bcee51df2a25b13c2a929",
+  "contract": {
+    "template": "reader-translation-contract-v3",
+    "routing": "known-templates-v4-crlf",
+    "paragraphs": "pdf2zh-2.9.0-babeldoc-0.6.3-reader-boundaries-v2-unicode-numbered"
+  },
+  "files": {
+    "references/translation-rules.txt": "4839271ab7009b013b2d3a78ba48b60eb1ac3156e72eba9d6f7db03a3f9dc089",
+    "references/body-rules.txt": "aaeee2e29591b52dbfa8ec8ce0dca65921607b85f9ca47a684f9a3ce268bae4c",
+    "references/terminology-rules.txt": "34786fe5b725597efdf7d4fe3c9ee2cdefec1bd7d1206f8b1316821a8bae0633",
+    "references/policy-contract.json": "8532aca2db3fb22e79b4d35fd854bddb6acfb7c7dd5db8774e239f15583e1d77",
+    "references/review-rules.md": "0e183a84e64106bd69058f78e3b096038ae13e2fb700275ec4dc08ceb966a0d6",
+    "references/glossary-schema.md": "d5f9c540ffc7fadd8b24bfabe17bbe6203eec16385f6f2a55c8836bc5744fc4c",
+    "references/quality-report-schema.md": "472fb9f1b5a8344b38de382effe8117536391cdea02fdeabf69f4fbbd4008ba4",
+    "references/review-examples.md": "5dbabd96e4b281b16f4e8af9d5160e803f93a8b9b8a546a5cac0367bc0476aa3",
+    "references/sources.md": "6f3380e6af135464e7f38a36f2a6c195fcc66cb1502dacffa4ab79c16d3633e5",
+    "SKILL.md": "e809c3e32d13e0c8e1558840706308bac9ad88b8b2cc4e7cb8b2a271e95f0343",
+    "evals/cases.jsonl": "84eccc44a2af49c534b67e6e37f99bdc2c22fb2c98670cc71c939d1b0c0b2222",
+    "evals/paper-cases.jsonl": "160accd54e9b75663228c3b910384e1807861ace9a571858d2eb02c6865f3352",
+    "evals/paper-corpus.json": "83944875237e99dd29dc4dc72b326f24f38221d7303c7ae286f9d06f0823fe5c",
+    "evals/baseline-body-system.txt": "32c09543e4436f1ddb9180b60b5a61d879216941c1e0c34d2fad52a9f4fcae4c",
+    "evals/rubric.md": "01b4b72a9cb41124502e01c700c7fce87e56c9dc95cdf6898ee1966cccfe7175"
+  }
+}

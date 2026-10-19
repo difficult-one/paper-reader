@@ -1,0 +1,17 @@
+node_modules/
+out/
+release/
+resources/runtime/
+.downloads/
+output/
+*.log
+src/renderer/public/pdf-assets/
+resources/source-code.zip
+
+# Local caches and private configuration
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+

@@ -1,0 +1,5 @@
+{
+  "template": "reader-translation-contract-v3",
+  "routing": "known-templates-v4-crlf",
+  "paragraphs": "pdf2zh-2.9.0-babeldoc-0.6.3-reader-boundaries-v2-unicode-numbered"
+}

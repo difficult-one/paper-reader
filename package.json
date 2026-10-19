@@ -1,0 +1,144 @@
+{
+  "name": "paper-reader",
+  "version": "0.1.11",
+  "description": "中英双栏论文阅读器",
+  "type": "module",
+  "main": "out/main/index.js",
+  "license": "AGPL-3.0-only",
+  "author": "Paper Reader contributors",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "tsc --noEmit && electron-vite build",
+    "test": "vitest run",
+    "test:ui": "node scripts/smoke.mjs",
+    "test:pair": "node scripts/pair-smoke.mjs",
+    "test:zoom": "node scripts/zoom-smoke.mjs --settle-profile --check-clear-scroll",
+    "test:settings": "node scripts/settings-smoke.mjs",
+    "test:scroll": "node scripts/scroll-smoke.mjs",
+    "test:reader-cold": "node scripts/scroll-smoke.mjs --profile --cold-only --rounds=3 --foreground --cache-mib=64 --dpr=1.5",
+    "test:layout": "node scripts/test-layout.mjs",
+    "test:replay": "node scripts/test-replay.mjs",
+    "experiment:tokens": "node scripts/token-cache-experiment.mjs",
+    "test:references": "node scripts/layout-smoke.mjs",
+    "test:installer": "node scripts/installer-smoke.mjs",
+    "runtime:prepare": "node scripts/prepare-runtime.mjs",
+    "package": "npm run build && node scripts/check-runtime.mjs && node scripts/make-icon.mjs && node scripts/package-source.mjs && node scripts/build-installer.mjs"
+  },
+  "build": {
+    "appId": "org.paperreader.desktop",
+    "productName": "论文对照阅读器",
+    "artifactName": "PaperReader-Setup-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/reader_engine.py",
+        "to": "reader_engine.py"
+      },
+      {
+        "from": "resources/reader_layout.py",
+        "to": "reader_layout.py"
+      },
+      {
+        "from": "resources/reader_replay.py",
+        "to": "reader_replay.py"
+      },
+      {
+        "from": "skills/research-bilingual-translation",
+        "to": "skills/research-bilingual-translation"
+      },
+      {
+        "from": "resources/runtime/pdf2zh",
+        "to": "runtime/pdf2zh",
+        "filter": [
+          "**/*",
+          "!**/__pycache__/**",
+          "!**/*.pyc",
+          "!**/tests/**",
+          "!**/test/**",
+          "!site-packages/gradio/**",
+          "!site-packages/gradio_client/**",
+          "!site-packages/gradio_i18n/**",
+          "!无法运行请安装*.exe"
+        ]
+      },
+      {
+        "from": "resources/runtime/pdf2zh/无法运行请安装1_vc_redist15.x64.exe",
+        "to": "runtime/pdf2zh/vc_redist15.x64.exe"
+      },
+      {
+        "from": "resources/runtime/pdf2zh/无法运行请安装2_vc_redist17.x64.exe",
+        "to": "runtime/pdf2zh/vc_redist17.x64.exe"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "THIRD_PARTY_NOTICES.md"
+      },
+      {
+        "from": "resources/runtime-manifest.json",
+        "to": "runtime-manifest.json"
+      },
+      {
+        "from": "resources/source-code.zip",
+        "to": "source-code.zip"
+      },
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "win": {
+      "executableName": "PaperReader",
+      "icon": "resources/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "differentialPackage": false,
+      "useZip": true,
+      "include": "resources/installer.nsh"
+    }
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "1.0.11",
+    "lucide-react": "^1.58.0",
+    "pdfjs-dist": "^6.4.299",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "pdf-lib": "^1.17.1",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

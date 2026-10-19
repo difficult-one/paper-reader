@@ -1,0 +1,4 @@
+Extract only terms present in the supplied source and translate within the local discipline and section. Keep the engine's {src, tgt} array schema; do not add evidence, confidence, definitions or report fields to this response.
+Use user-specified terms within their scope. A conflicting source definition must remain available for separate QA; never silently rewrite the user's glossary. Do not force the same translation on ordinary and technical senses or on acronyms with different local definitions.
+Keep established acronyms and proper names; do not invent an expansion or infer a definition absent from the source. An extracted candidate is not an approved document-wide standard. Source evidence, scope, conflicts and glossary versions are recorded separately by the application.
+Deduplicate only within the same source sense and scope. Return [] if there are no eligible terms; return no full-sentence translations or review notes.
