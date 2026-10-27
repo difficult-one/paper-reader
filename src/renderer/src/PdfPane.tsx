@@ -9,19 +9,22 @@ import { normalizeSelectionRects } from '../../shared/selection'
 import { schedulePdfRender } from './pdf-render-scheduler'
 import { PdfPage, type PageSize } from './PdfPage'
 import { PdfPageVisibility } from './pdf-page-visibility'
+import { PdfSelectionHighlight, selectedTextFragments } from './pdf-selection-highlight'
 import { activatePdfPane, pdfPerformance, sizeCache } from './pdf-performance'
 import { indexPageAnnotations, pdfDocumentCacheKey } from './pdf-page-cache'
 import { PdfRasterClient } from './pdf-raster-client'
 
 GlobalWorkerOptions.workerSrc = workerUrl
-export interface PaneHandle { goTo(position: Position): void }
+export interface PaneHandle { goTo(position: Position): void; focusPageInput(): void; turnPage(direction: -1 | 1): void; changeZoom(direction: -1 | 0 | 1): void }
 export interface TextSelection { quote: string; anchors: AnnotationAnchor[]; x: number; y: number }
-interface PaneProps { side: 'left' | 'right'; url: string; zoom: number; initialPosition: Position; language?: string; isTranslation?: boolean; annotations: PaperAnnotation[]; onSelection(selection: TextSelection): void; onAnnotation(id: string): void; onPosition(position: Position): void; onZoom(zoom: number): void }
+export interface LoadedPdf { url: string; pdf: PDFDocumentProxy }
+interface PaneProps { side: 'left' | 'right'; url: string; zoom: number; initialPosition: Position; fileName?: string; annotations: PaperAnnotation[]; onSelection(selection: TextSelection): void; onAnnotation(id: string): void; onPosition(position: Position): void; onZoom(zoom: number): void; onLoad?(value: LoadedPdf | null): void }
 const emptyAnnotations: PaperAnnotation[] = []
 const zoomLevels = [0.5, 0.65, 0.8, 1, 1.25, 1.5, 2, 2.5, 3]
 
-export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({ side, url, zoom, initialPosition, language, isTranslation = side === 'right', annotations, onSelection, onAnnotation, onPosition, onZoom }, ref) {
+export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({ side, url, zoom, initialPosition, fileName, annotations, onSelection, onAnnotation, onPosition, onZoom, onLoad }, ref) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
+  useEffect(() => { onLoad?.(pdf ? { url, pdf } : null); return () => onLoad?.(null) }, [pdf, url, onLoad])
   const [raster, setRaster] = useState<PdfRasterClient | null>(null)
   const [sizes, setSizes] = useState<PageSize[]>([])
   const [error, setError] = useState('')
@@ -30,6 +33,8 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
   const [currentPage, setCurrentPage] = useState(initialPosition.page)
   const [pageInput, setPageInput] = useState(String(initialPosition.page))
   const container = useRef<HTMLDivElement>(null)
+  const pageField = useRef<HTMLInputElement>(null)
+  const currentPageRef = useRef(initialPosition.page)
   const preview = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const baseMetrics = useRef<PageMetric[]>([])
@@ -52,7 +57,13 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
   useEffect(() => {
     if (!container.current) return
     const observer = new PdfPageVisibility(container.current); setVisibility(observer)
-    return () => observer.destroy()
+    const highlight = new PdfSelectionHighlight(container.current)
+    return () => { observer.destroy(); highlight.destroy() }
+  }, [])
+  const showPage = useCallback((page: number) => {
+    currentPageRef.current = page; setCurrentPage(page)
+    // Layout and scroll updates must not replace an unfinished page entry.
+    if (document.activeElement !== pageField.current) setPageInput(String(page))
   }, [])
   const goTo = useCallback((target: Position) => {
     zoomAnchor.current = null
@@ -62,18 +73,23 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
     const top = Math.max(0, Math.min(scrollFromPosition(target, metrics.current), element.scrollHeight - element.clientHeight))
     element.scrollTop = top; suppressed.current = { top: element.scrollTop, left: element.scrollLeft }
     const actual = positionFromScroll(top, metrics.current)
-    setCurrentPage(actual.page); setPageInput(String(actual.page))
-  }, [])
+    showPage(actual.page)
+  }, [showPage])
   useLayoutEffect(() => {
     if (requestedZoom.current === appliedZoom.current) requestedZoom.current = zoom
     appliedZoom.current = zoom
   }, [zoom])
   useEffect(() => {
     if (zoom === renderZoom) return
-    const timer = setTimeout(() => setRenderZoom(zoom), 150)
+    const settle = () => {
+      // Retain the outer preview while a native text drag pins its inner layer.
+      // Committing only the outer transform would move the text under the mouse.
+      if (visibilityRef.current?.isDragging()) { timer = setTimeout(settle, 30); return }
+      setRenderZoom(zoom)
+    }
+    let timer = setTimeout(settle, 150)
     return () => clearTimeout(timer)
   }, [zoom, renderZoom, url])
-  useImperativeHandle(ref, () => ({ goTo }), [goTo])
   useEffect(() => {
     const element = container.current
     if (!element) return
@@ -170,13 +186,13 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
       element.scrollTop += bounds.top + anchor.y * bounds.height - anchor.clientY
       const next = positionFromScroll(element.scrollTop, metrics.current)
       position.current = next; suppressed.current = { top: element.scrollTop, left: element.scrollLeft }
-      setCurrentPage(next.page); setPageInput(String(next.page))
+      showPage(next.page)
       cancelAnimationFrame(zoomPositionFrame.current)
       // Linked panes must finish measuring their new layout before receiving this position.
       zoomPositionFrame.current = requestAnimationFrame(() => { zoomPositionFrame.current = 0; callback.current(position.current) })
       if (zoom === renderZoom) zoomAnchor.current = null
     } else goTo(position.current)
-  }, [width, zoom, renderZoom, pdf, sizes, goTo])
+  }, [width, zoom, renderZoom, pdf, sizes, goTo, showPage])
   useEffect(() => {
     const element = container.current
     if (!element) return
@@ -190,18 +206,30 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
         if (suppressed.current !== null && Math.abs(element.scrollTop - suppressed.current.top) < 2 && Math.abs(element.scrollLeft - suppressed.current.left) < 2) { suppressed.current = null; return }
         suppressed.current = null
         zoomAnchor.current = null
-        position.current = next; setCurrentPage(next.page); setPageInput(String(next.page)); callback.current(next)
+        position.current = next; showPage(next.page); callback.current(next)
       })
     }
     element.addEventListener('scroll', scroll, { passive: true })
     return () => { element.removeEventListener('scroll', scroll); cancelAnimationFrame(frame) }
-  }, [])
+  }, [showPage])
   const jump = (page: number) => {
     if (!pdf) return
     const next = { page: Math.max(1, Math.min(pdf.numPages, page || 1)), fraction: 0 }
     goTo(next); callback.current(next)
   }
-  const label = language ?? (side === 'left' ? '英文' : '中文')
+  useImperativeHandle(ref, () => ({
+    goTo,
+    focusPageInput: () => { pageField.current?.focus(); pageField.current?.select() },
+    turnPage: direction => { jump(position.current.page + direction); container.current?.focus({ preventScroll: true }) },
+    changeZoom: direction => {
+      const next = direction === 0 ? 1 : direction > 0
+        ? zoomLevels.find(value => value > requestedZoom.current) ?? zoomLevels.at(-1)!
+        : [...zoomLevels].reverse().find(value => value < requestedZoom.current) ?? zoomLevels[0]
+      zoomAnchor.current = null; requestedZoom.current = next
+      visibilityRef.current?.scroll(position.current.page, 0); zoomCallback.current(next)
+    },
+  }))
+  const label = side === 'left' ? '左侧' : '右侧'
   const pages = useMemo(() => pdf && sizes.map((size, index) => <PdfPage key={index} pdf={pdf} raster={raster} documentKey={pdfDocumentCacheKey(url, pdf.fingerprints)} number={index + 1} scale={Math.max(0.1, Math.min(1000, width - 64) / size.width) * renderZoom} size={size} visibility={visibility} side={side} annotations={pageAnnotations.get(index + 1) ?? emptyAnnotations} />), [pdf, raster, sizes, width, renderZoom, pageAnnotations, visibility, side, url])
   const pageWidth = useMemo(() => Math.max(0, ...sizes.map(size => Math.max(size.width * .1, Math.min(1000, width - 64)) * renderZoom)), [sizes, width, renderZoom])
   const previewRatio = zoom / renderZoom
@@ -217,22 +245,9 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
       const paper = slot.querySelector<HTMLElement>('.pdf-paper')
       const layer = slot.querySelector<HTMLElement>('.textLayer')
       if (!paper || !layer || !range.intersectsNode(layer)) continue
-      const rectangles: DOMRect[] = []
-      const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT)
-      const pageFragments: string[] = []
-      let node: Node | null
-      while ((node = walker.nextNode())) {
-        if (!range.intersectsNode(node) || !node.textContent?.trim()) continue
-        const selected = document.createRange()
-        selected.selectNodeContents(node)
-        if (range.startContainer === node) selected.setStart(node, range.startOffset)
-        if (range.endContainer === node) selected.setEnd(node, range.endOffset)
-        if (selected.collapsed) continue
-        rectangles.push(...Array.from(selected.getClientRects()))
-        pageFragments.push(selected.toString())
-      }
-      const rects = normalizeSelectionRects(paper.getBoundingClientRect(), rectangles)
-      if (rects.length) { anchors.push({ page: Number(slot.dataset.page), rects }); fragments.push(pageFragments.join(' ')) }
+      const { rectangles, quote } = selectedTextFragments(layer, range)
+      const rects = normalizeSelectionRects(paper.getBoundingClientRect(), rectangles, Number(layer.dataset.mainRotation ?? 0))
+      if (rects.length) { anchors.push({ page: Number(slot.dataset.page), rects }); fragments.push(quote) }
     }
     const quote = fragments.join('\n').trim()
     if (!quote) return
@@ -250,15 +265,15 @@ export const PdfPane = memo(forwardRef<PaneHandle, PaneProps>(function PdfPane({
   }
   return <section className={`pdf-pane ${side}`} data-side={side} onWheelCapture={() => activatePdfPane(side)} onPointerDownCapture={() => activatePdfPane(side)} onKeyDownCapture={() => activatePdfPane(side)} aria-label={`${label}阅读栏`}>
     <div className="pane-toolbar">
-      <div className="pane-language"><span className="language-tag">{label === '英文' ? 'EN' : label === '中文' ? '中' : '文'}</span><span>{label === '原文' ? label : `${label}${isTranslation ? '译文' : '原文'}`}</span><span className="pane-note">PDF</span></div>
+      <div className="pane-language"><span className="language-tag">{side === 'left' ? '左' : '右'}</span><span>{label}论文</span><span className="pane-note pane-file-name" title={fileName}>{fileName ?? 'PDF'}</span></div>
       <div className="pane-controls">
-        <select aria-label={`${label}缩放`} title="按住 Ctrl 并滚动鼠标滚轮，以鼠标为中心缩放页面" value={zoom} onChange={event => { zoomAnchor.current = null; onZoom(Number(event.target.value)) }}>
+        <select aria-label={`${label}缩放`} title="Ctrl+加号 / 减号缩放，Ctrl+0 适应宽度；Ctrl+滚轮以鼠标为中心缩放" value={zoom} onChange={event => { zoomAnchor.current = null; onZoom(Number(event.target.value)) }}>
           {zoomLevels.map(value => <option key={value} value={value}>{value === 1 ? '适应宽度' : `${Math.round(value * 100)}% 宽度`}</option>)}
         </select>
         <span className="toolbar-separator" />
-        <button className="icon-button" aria-label={`上一页（${label}）`} disabled={currentPage <= 1} onClick={() => jump(currentPage - 1)}><ChevronLeft size={16} /></button>
-        <form onSubmit={event => { event.preventDefault(); jump(Number(pageInput)) }}><input aria-label={`${label}页码`} value={pageInput} disabled={!pdf} onChange={event => setPageInput(event.target.value)} onBlur={() => setPageInput(String(currentPage))} /><span>/ {pdf?.numPages ?? '—'}</span></form>
-        <button className="icon-button" aria-label={`下一页（${label}）`} disabled={!pdf || currentPage >= pdf.numPages} onClick={() => jump(currentPage + 1)}><ChevronRight size={16} /></button>
+        <button className="icon-button" aria-label={`上一页（${label}）`} title="上一页（Ctrl+PageUp）" disabled={currentPage <= 1} onClick={() => jump(currentPage - 1)}><ChevronLeft size={16} /></button>
+        <form onSubmit={event => { event.preventDefault(); jump(Number(pageInput)); container.current?.focus({ preventScroll: true }) }}><input ref={pageField} aria-label={`${label}页码`} title="跳转到页码（Ctrl+G）" value={pageInput} disabled={!pdf} onChange={event => setPageInput(event.target.value)} onBlur={() => setPageInput(String(currentPageRef.current))} /><span>/ {pdf?.numPages ?? '—'}</span></form>
+        <button className="icon-button" aria-label={`下一页（${label}）`} title="下一页（Ctrl+PageDown）" disabled={!pdf || currentPage >= pdf.numPages} onClick={() => jump(currentPage + 1)}><ChevronRight size={16} /></button>
       </div>
     </div>
     <div ref={container} className="pdf-scroll" tabIndex={0} aria-label={`${label} PDF 页面`} onMouseUp={() => requestAnimationFrame(collectSelection)} onKeyUp={event => { if (event.shiftKey) requestAnimationFrame(collectSelection) }} onClick={clicked}>

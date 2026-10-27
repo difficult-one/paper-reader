@@ -110,7 +110,22 @@ export async function runScrollProfile(app, page, options = {}) {
     const startPage = Math.min(count - 2, Math.max(5, Math.floor(count / 4)) + round * Math.max(1, Math.floor(count / 4)))
     await page.evaluate(beginSampling)
     await leftInput.fill(String(Math.max(1, startPage))); await leftInput.press('Enter')
-    await page.locator(`[data-side="left"] [data-page="${Math.max(1, startPage)}"] canvas[data-quality="clear"]`).waitFor({ timeout: 30000 })
+    try {
+      await page.locator(`[data-side="left"] [data-page="${Math.max(1, startPage)}"] canvas[data-quality="clear"]`).waitFor({ timeout: 30000 })
+    } catch (error) {
+      const state = await page.evaluate(target => ({ target, stats: window.__pdfPerformance,
+        panes: [...document.querySelectorAll('.pdf-pane')].map(pane => {
+          const root = pane.querySelector('.pdf-scroll'); const slot = pane.querySelector(`[data-page="${target}"]`)
+          return { side: pane.dataset.side, page: pane.querySelector('input')?.value, zoom: pane.querySelector('select')?.value,
+            top: root.scrollTop, height: root.scrollHeight, viewport: root.getBoundingClientRect().toJSON(),
+            preview: pane.querySelector('.pdf-pages-content')?.style.transform,
+            target: slot?.getBoundingClientRect().toJSON(), canvas: slot?.querySelector('canvas')?.outerHTML,
+            errors: [...pane.querySelectorAll('.page-error')].map(element => element.textContent) }
+        }) }), startPage)
+      await writeFile(resolve(directory, 'cold-failure.json'), JSON.stringify(state, null, 2))
+      await page.screenshot({ path: resolve(directory, 'cold-failure.png') })
+      throw error
+    }
     // The target page may finish before the linked pane. Keep observing every
     // visible page so unfinished clear renders are not silently censored.
     await page.waitForFunction(() => [...document.querySelectorAll('.pdf-scroll')].every(root => {

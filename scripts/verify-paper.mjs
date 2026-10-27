@@ -15,17 +15,17 @@ try {
   const errors = []; page.on('pageerror', error => errors.push(error.message))
   await page.getByLabel('阅读模式').selectOption('original')
   for (const number of [1, 3, 5, count]) {
-    await page.getByLabel('英文页码', { exact: true }).fill(String(number))
-    await page.getByLabel('英文页码', { exact: true }).press('Enter')
+    await page.getByLabel('左侧页码', { exact: true }).fill(String(number))
+    await page.getByLabel('左侧页码', { exact: true }).press('Enter')
     await page.locator(`[data-side="left"] [data-page="${number}"] .textLayer span`).first().waitFor()
     assert.equal(await page.locator('.page-error').count(), 0)
     if (number === 3) await page.screenshot({ path: 'output/playwright/research-paper-formulas.png' })
   }
   const canvasCount = await page.locator('canvas').count()
   assert(canvasCount < count, 'distant pages must release their canvases')
-  await page.getByLabel('英文缩放').selectOption('1.25')
+  await page.getByLabel('左侧缩放').selectOption('1.25')
   await page.setViewportSize({ width: 1200, height: 800 })
-  assert.equal(await page.getByLabel('英文页码', { exact: true }).inputValue(), String(count))
+  assert.equal(await page.getByLabel('左侧页码', { exact: true }).inputValue(), String(count))
   assert.deepEqual(errors, [])
   console.log(`Research PDF passed: ${count} pages; text, figures, formulas and references render; ${canvasCount} canvases retained after scrolling; page preserved on zoom/resize.`)
 } finally { await app.close() }

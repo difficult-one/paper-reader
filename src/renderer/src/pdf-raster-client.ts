@@ -11,13 +11,16 @@ export class PdfRasterClient {
   private ready: Promise<void>
   private initialized = false
   private closed = false
-  private pending = new Map<string, { page: number; priority(): number; sent: number; trace?: RasterTrace }>()
+  private lifetime = new AbortController()
+  private pending = new Map<string, { page: number; priority(): number; sent: number; rendering: boolean; trace?: RasterTrace }>()
   constructor(url: string) {
     this.ready = window.reader.openPdfRaster(this.owner, url).then(result => { if (!result.ok) throw new Error(result.error) }).finally(() => { this.initialized = true })
     // A document can close before its first visible page requests a raster.
     void this.ready.catch(() => {})
   }
   async paint(canvas: HTMLCanvasElement, request: Omit<PdfRasterRequest, 'id'>, work: PdfWork) {
+    work = { ...work, signal: AbortSignal.any([this.lifetime.signal, ...(work.signal ? [work.signal] : [])]) }
+    if (work.signal!.aborted) throw aborted()
     const trace: RasterTrace | undefined = tracing && traces.length < 10000 ? { owner: this.owner, document: work.document, page: request.page, width: request.width, height: request.height, created: performance.now(), priorities: [] } : undefined
     if (trace) traces.push(trace)
     await this.ready
@@ -25,14 +28,17 @@ export class PdfRasterClient {
     const id = crypto.randomUUID()
     const priority = () => typeof work.priority === 'function' ? work.priority() : work.priority ?? request.priority
     const initialPriority = priority()
-    this.pending.set(id, { page: request.page, priority, sent: initialPriority, trace })
+    const pending = { page: request.page, priority, sent: initialPriority, rendering: true, trace }
+    this.pending.set(id, pending)
     if (trace) { trace.sent = performance.now(); trace.priorities.push({ time: trace.sent, priority: initialPriority }) }
-    const cancel = () => { void window.reader.cancelPdfRaster(this.owner, id) }
+    const cancel = () => { if (pending.rendering) void window.reader.cancelPdfRaster(this.owner, id) }
     work.signal?.addEventListener('abort', cancel, { once: true })
     let bitmap: ImageBitmap | undefined
     try {
       const result = await window.reader.renderPdfRaster(this.owner, { id, ...request, priority: initialPriority, ...(trace ? { trace: true } : {}) })
-      this.pending.delete(id)
+      // Decoding and the scheduled canvas commit retain buffers too. Keep their
+      // lane reserved until the bitmap is committed or discarded.
+      pending.rendering = false
       if (trace) { trace.received = performance.now(); if (result.ok) trace.worker = result.value.timings }
       if (work.signal?.aborted) throw aborted()
       if (!result.ok) throw new Error(result.error)
@@ -50,7 +56,7 @@ export class PdfRasterClient {
     } finally { if (trace) { trace.ended = performance.now(); trace.aborted = Boolean(work.signal?.aborted) }; this.pending.delete(id); work.signal?.removeEventListener('abort', cancel); bitmap?.close() }
   }
   prioritize(page: number) {
-    for (const [id, request] of this.pending) if (request.page === page) {
+    for (const [id, request] of this.pending) if (request.page === page && request.rendering) {
       const priority = request.priority()
       if (priority !== request.sent) { request.sent = priority; request.trace?.priorities.push({ time: performance.now(), priority }); void window.reader.prioritizePdfRaster(this.owner, id, priority) }
     }
@@ -62,5 +68,5 @@ export class PdfRasterClient {
     if (priority > 1) for (const request of this.pending.values()) if (request.priority() <= 1) return false
     return true
   }
-  close() { this.closed = true; void window.reader.closePdfRaster(this.owner) }
+  close() { this.closed = true; this.lifetime.abort(); void window.reader.closePdfRaster(this.owner) }
 }

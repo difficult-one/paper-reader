@@ -54,10 +54,10 @@ try {
     if (option('dpr', '')) assert(Math.abs(await page.evaluate(() => devicePixelRatio) - Number(option('dpr', 1))) < 1e-6, 'requested DPR must actually apply')
   }
   await page.locator('[data-side="left"] .canvas-holder canvas').first().waitFor({ timeout: 30000 })
-  await page.getByRole('button', { name: '导入中英对照', exact: true }).click()
+  await page.getByRole('button', { name: '导入对照论文', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await app2.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }) }, translated)
-  await dialog.getByRole('button', { name: '选择中文 PDF', exact: true }).click()
+  await dialog.getByRole('button', { name: '选择右侧 PDF', exact: true }).click()
   await dialog.getByRole('button', { name: '开始对照阅读', exact: true }).click()
   await page.locator('[data-side="right"] .canvas-holder canvas').first().waitFor({ timeout: 30000 })
   const annotationCount = Number(option('annotations-per-page', 0))
@@ -95,8 +95,8 @@ try {
   await writeFile(`output/playwright/scroll-${baseline ? 'before' : 'after'}.json`, JSON.stringify(metrics, null, 2))
   console.log(JSON.stringify({ ...metrics, rawFrames: undefined }))
   // Native wheel + pointer input also exercises PDF rendering as new pages enter both panes.
-  await page.getByLabel('英文页码', { exact: true }).fill('1')
-  await page.getByLabel('英文页码', { exact: true }).press('Enter')
+  await page.getByLabel('左侧页码', { exact: true }).fill('1')
+  await page.getByLabel('左侧页码', { exact: true }).press('Enter')
   await page.locator('[data-side="left"] [data-page="1"] .textLayer span').first().waitFor()
   await page.evaluate(() => {
     const data = window.wheelMetrics = { frames: [], maxDrawnPerFrame: 0, drawnFrames: 0, wheelEvents: 0, longTasks: [] }
@@ -145,7 +145,7 @@ try {
     const panes = document.querySelectorAll('.pdf-scroll')
     return Number(left.value) > 1 && left.value === right.value && Math.abs(panes[0].scrollTop - panes[1].scrollTop) < 2
   })
-  const stoppedPage = await page.getByLabel('中文页码', { exact: true }).inputValue()
+  const stoppedPage = await page.getByLabel('右侧页码', { exact: true }).inputValue()
   await page.locator(`[data-side="right"] [data-page="${stoppedPage}"] .textLayer span`).first().waitFor()
   const wheelMetrics = await page.evaluate(() => {
     window.stopWheelMetrics()
@@ -162,20 +162,20 @@ try {
     assert(wheelMetrics.drawnFrames > 5, 'the fixture must exercise drawing newly visible PDF pages')
     assert(wheelMetrics.maxDrawnPerFrame <= 1, 'both panes must share the drawing budget instead of rendering multiple PDF canvases in one frame')
     assert(metrics.geometryReads < 1000, 'scrolling must use cached geometry rather than read all page elements every frame')
-    await page.getByLabel('英文页码', { exact: true }).fill('45')
-    await page.getByLabel('英文页码', { exact: true }).press('Enter')
+    await page.getByLabel('左侧页码', { exact: true }).fill('45')
+    await page.getByLabel('左侧页码', { exact: true }).press('Enter')
     await page.locator('[data-side="left"] [data-page="45"] .textLayer span').first().waitFor()
-    await page.getByLabel('英文缩放').selectOption('1.25')
+    await page.getByLabel('左侧缩放').selectOption('1.25')
     await app2.browserWindow(page).then(window => window.evaluate(window => window.setSize(1200, 800)))
-    assert.equal(await page.getByLabel('英文页码', { exact: true }).inputValue(), '45')
-    assert.equal(await page.getByLabel('中文页码', { exact: true }).inputValue(), '45')
-    await page.getByLabel('英文缩放').selectOption('3')
+    assert.equal(await page.getByLabel('左侧页码', { exact: true }).inputValue(), '45')
+    assert.equal(await page.getByLabel('右侧页码', { exact: true }).inputValue(), '45')
+    await page.getByLabel('左侧缩放').selectOption('3')
     await page.locator('[data-side="left"] [data-page="45"] .textLayer span').first().waitFor()
     assert(await page.locator('canvas').evaluateAll(canvases => canvases.every(canvas => canvas.width * canvas.height < 8_020_000)), 'high-zoom canvas allocations must stay bounded')
     await page.getByRole('button', { name: '联动阅读', exact: true }).click()
-    await page.getByLabel('中文页码', { exact: true }).fill('60')
-    await page.getByLabel('中文页码', { exact: true }).press('Enter')
-    assert.equal(await page.getByLabel('英文页码', { exact: true }).inputValue(), '45')
+    await page.getByLabel('右侧页码', { exact: true }).fill('60')
+    await page.getByLabel('右侧页码', { exact: true }).press('Enter')
+    assert.equal(await page.getByLabel('左侧页码', { exact: true }).inputValue(), '45')
     console.log('Long PDF: linked page/zoom, resize position, independent panes and high-zoom raster budget passed.')
   }
   }

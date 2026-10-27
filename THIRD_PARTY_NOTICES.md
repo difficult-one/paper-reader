@@ -3,7 +3,9 @@
 论文对照阅读器采用 GNU Affero General Public License v3.0（AGPL-3.0-only）。完整许可证见安装目录 resources/LICENSE。
 本应用的对应源码（不包含第三方二进制文件）随安装包附带于 resources/source-code.zip，包含源代码、依赖锁定、测试、构建与运行时准备脚本。
 
-## 翻译引擎
+## 历史翻译引擎
+
+0.1.12 起移除自动翻译，不再随安装包分发下列翻译引擎、模型、字体、Python 或 Visual C++ 安装程序。对应源码压缩包仍包含项目历史翻译适配代码及固定版本清单，供源码复现和旧版缓存兼容使用。以下资源路径仅适用于 0.1.11 及更早版本的运行包，当前安装包不包含这些路径。
 
 - PDFMathTranslate-next v2.9.0，AGPL-3.0：https://github.com/PDFMathTranslate-next/PDFMathTranslate-next/tree/v2.9.0
 - BabelDOC v0.6.3，AGPL-3.0：https://github.com/funstory-ai/BabelDOC/tree/v0.6.3
@@ -28,4 +30,4 @@
 - https://github.com/zotero/reader ：参考阅读与批注侧栏的交互方式。
 - https://github.com/agentcooper/react-pdf-highlighter 与 https://github.com/DanielArnould/react-pdf-highlighter-extended ：参考选字高亮及与缩放比例无关的定位方式。
 
-本项目未复制上述参考项目的应用源码。所附固定运行包来自 PDFMathTranslate-next 官方 Release。
+本项目未复制上述参考项目的应用源码。历史固定运行包来自 PDFMathTranslate-next 官方 Release。

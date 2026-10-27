@@ -1,0 +1,36 @@
+import { expect, it } from 'vitest'
+import { readerShortcut, type ShortcutKey } from '../src/renderer/src/reader-shortcuts'
+
+const key = (key: string, modifiers: Partial<ShortcutKey> = {}): ShortcutKey => ({ key, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false, isComposing: false, ...modifiers })
+it('matches reader commands and existing shortcuts with exact modifiers', () => {
+  expect(readerShortcut(key('o', { ctrlKey: true }))).toBe('open')
+  expect(readerShortcut(key('O', { ctrlKey: true, shiftKey: true }))).toBe('import')
+  expect(readerShortcut(key('g', { ctrlKey: true }))).toBe('page')
+  expect(readerShortcut(key(',', { ctrlKey: true }))).toBe('settings')
+  expect(readerShortcut(key('PageDown', { ctrlKey: true }))).toBe('next')
+  expect(readerShortcut(key('PageUp', { ctrlKey: true }))).toBe('previous')
+  expect(readerShortcut(key('1', { altKey: true }))).toBe('original')
+  expect(readerShortcut(key('2', { altKey: true }))).toBe('parallel')
+  expect(readerShortcut(key('3', { altKey: true }))).toBe('translated')
+  expect(readerShortcut(key('a', { altKey: true }))).toBe('annotations')
+  expect(readerShortcut(key('q', { altKey: true }))).toBe('questions')
+  expect(readerShortcut(key('h', { altKey: true }))).toBe('highlight')
+  expect(readerShortcut(key('n', { altKey: true }))).toBe('note')
+  expect(readerShortcut(key('l', { altKey: true }))).toBe('link')
+  expect(readerShortcut(key('z', { ctrlKey: true }))).toBe('undo')
+  expect(readerShortcut(key('F1'))).toBe('help')
+  expect(readerShortcut(key('Escape'))).toBe('escape')
+})
+it('supports main keyboard and numpad zoom keys without swallowing unrelated combinations', () => {
+  for (const event of [key('=', { ctrlKey: true }), key('+', { ctrlKey: true, shiftKey: true }), key('+', { ctrlKey: true }), key('=', { metaKey: true })]) expect(readerShortcut(event)).toBe('zoomIn')
+  expect(readerShortcut(key('-', { ctrlKey: true }))).toBe('zoomOut')
+  expect(readerShortcut(key('0', { ctrlKey: true }))).toBe('zoomReset')
+  for (const event of [key('h'), key('q', { ctrlKey: true, altKey: true }), key('h', { altKey: true, shiftKey: true }), key('F1', { ctrlKey: true }), key('g', { ctrlKey: true, shiftKey: true }), key('0', { ctrlKey: true, shiftKey: true })]) expect(readerShortcut(event)).toBeNull()
+})
+it('ignores composition and prevents repeated saving while allowing repeated zoom', () => {
+  expect(readerShortcut(key('h', { altKey: true, isComposing: true }))).toBeNull()
+  expect(readerShortcut(key('h', { altKey: true, repeat: true }))).toBeNull()
+  expect(readerShortcut(key('n', { altKey: true, repeat: true }))).toBeNull()
+  expect(readerShortcut(key('z', { ctrlKey: true, repeat: true }))).toBeNull()
+  expect(readerShortcut(key('=', { ctrlKey: true, repeat: true }))).toBe('zoomIn')
+})

@@ -8,7 +8,7 @@ interface Props {
   close(): void; configure(): void; cite(evidence: QuestionEvidence): void; save(conversation: QuestionConversation, turn: QuestionTurn): Promise<void>;
 }
 const activeTurn = (turn: QuestionTurn) => turn.status === 'indexing' || turn.status === 'sending'
-const versionLabel = (version: string) => version === 'original' ? '原文' : '中文版本'
+const versionLabel = (version: string) => version === 'original' ? '左侧论文' : '右侧论文'
 function Answer({ turn, cite }: { turn: QuestionTurn; cite(evidence: QuestionEvidence): void }) {
   const pieces = turn.answer.split(/(\[S\d+\])/g)
   return <div className="question-answer">{pieces.map((piece, index) => {
@@ -144,7 +144,7 @@ export function QuestionPanel({ doc, settings, visible, selection, close, config
     <header><MessageCircleQuestion size={18} /><strong>论文问答</strong><button className="icon-button" aria-label="关闭问答侧栏" onClick={close}><X size={17} /></button></header>
     <div className="question-messages" ref={list} onScroll={() => { const el = list.current; if (el) followBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
     <div className="question-history"><select aria-label="问答会话" value={conversation?.id ?? ''} disabled={sending || loading} onChange={event => choose(event.target.value)}><option value="">{loading ? '正在读取本机会话…' : '新的选区问题'}</option>{history.map(c => <option key={c.id} value={c.id}>{versionLabel(c.sourceVersion)} · 第 {c.selectionSnapshot.anchors[0].page} 页 · {c.selectionSnapshot.quote.slice(0, 30)}</option>)}</select><button className="icon-button" aria-label="删除当前问答会话" disabled={!conversation || sending} onClick={() => void remove()}><Trash2 size={15} /></button></div>
-    {frozen ? <div className="question-selection"><span>{versionLabel(frozen.sourceVersion)} · 第 {frozen.snapshot.anchors.map(a => a.page).join('、')} 页{frozen.sourceVersion !== 'original' && ' · 依据中文版本'}</span><blockquote>{frozen.snapshot.quote}</blockquote>{frozen.snapshot.quote.length > 2000 && <p className="question-error">选区超过 2,000 字符，请缩小范围或分段提问。</p>}</div> : <div className="question-empty"><MessageCircleQuestion size={25} /><p>{doc.hasText ? '选中论文中的词、句子或段落，点击选区旁的放大镜“询问”。' : '此 PDF 没有可选中的正文。请先进行 OCR 文字识别后提问。'}</p><small>论文内问答优先；证据不足会明确说明。</small></div>}
+    {frozen ? <div className="question-selection"><span>{versionLabel(frozen.sourceVersion)} · 第 {frozen.snapshot.anchors.map(a => a.page).join('、')} 页{frozen.sourceVersion !== 'original' && ' · 依据右侧论文'}</span><blockquote>{frozen.snapshot.quote}</blockquote>{frozen.snapshot.quote.length > 2000 && <p className="question-error">选区超过 2,000 字符，请缩小范围或分段提问。</p>}</div> : <div className="question-empty"><MessageCircleQuestion size={25} /><p>{doc.hasText ? '选中论文中的词、句子或段落，点击选区旁的放大镜“询问”。' : '此 PDF 没有可选中的正文。请先进行 OCR 文字识别后提问。'}</p><small>论文内问答优先；证据不足会明确说明。</small></div>}
       {conversation?.turns.map(turn => <article className="question-turn" key={turn.requestId}><h3>{turn.question}</h3>
         {turn.answer ? <Answer turn={turn} cite={cite} /> : activeTurn(turn) ? <p className="question-pending"><LoaderCircle size={14} className="spin" />{turn.status === 'indexing' ? '正在检索论文片段…' : '正在等待服务返回…'}</p> : null}
         {turn.warning && <p className="question-warning">{turn.warning}</p>}{turn.error && <p className="question-error">{turn.error}</p>}
@@ -154,7 +154,7 @@ export function QuestionPanel({ doc, settings, visible, selection, close, config
       </article>)}
     </div>
     <div className="question-composer">
-      {outdated && <p className="question-error">此会话的中文版本已替换。可回看内容，请重新选字开始提问。</p>}
+      {outdated && <p className="question-error">此会话的右侧论文已更换。可回看内容，请重新选字开始提问。</p>}
       <div className="question-quick-actions">{['解释术语', '解释这句话', '在本文中有什么作用'].map(text => <button key={text} className="button small secondary" disabled={!frozen || sending || outdated} onClick={() => void send(text)}>{text}</button>)}</div>
       <p className="question-disclosure">发送时，选区及相关论文片段会发送至{settings?.model ? `已配置服务（${settings.model}）` : '已配置服务'}。不上传整篇，不自动联网检索。</p>
       {(!settings?.hasApiKey || !settings.model) && <button className="text-button" onClick={configure}>配置问答使用的服务和模型</button>}

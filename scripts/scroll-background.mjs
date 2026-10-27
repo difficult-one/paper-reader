@@ -17,7 +17,22 @@ export async function addScrollAnnotations(page, path, perPage) {
     return session.pages * perPage * 2
   }, { path, perPage })
   await page.reload()
-  await page.waitForFunction(expected => document.querySelectorAll('.highlight-mark').length === expected, expected, { timeout: 30000 })
+  await page.waitForFunction(perPage => ['left', 'right'].every(side => document.querySelectorAll(`[data-side="${side}"] [data-page="1"] .highlight-mark`).length === perPage), perPage, { timeout: 30000 })
+  const initial = await page.locator('.highlight-mark').count()
+  // Short PDFs can legitimately fit entirely inside the 4000px near margin.
+  if (expected / (perPage * 2) < 32) return expected
+  assert(initial < expected / 2, 'distant pages must not mount thousands of annotation nodes')
+  const middle = Math.floor(expected / (perPage * 2) / 2)
+  await page.getByLabel('左侧页码', { exact: true }).fill(String(middle))
+  await page.getByLabel('左侧页码', { exact: true }).press('Enter')
+  await page.waitForFunction(({ middle, perPage }) => ['left', 'right'].every(side => document.querySelectorAll(`[data-side="${side}"] [data-page="${middle}"] .highlight-mark`).length === perPage), { middle, perPage })
+  await page.waitForFunction(() => document.querySelectorAll('[data-page="1"] .highlight-mark').length === 0)
+  const jumped = await page.locator('.highlight-mark').count()
+  assert(jumped < expected / 2, 'jumping must release distant annotation nodes and retain all destination marks')
+  await page.getByLabel('左侧页码', { exact: true }).fill('1')
+  await page.getByLabel('左侧页码', { exact: true }).press('Enter')
+  await page.waitForFunction(perPage => ['left', 'right'].every(side => document.querySelectorAll(`[data-side="${side}"] [data-page="1"] .highlight-mark`).length === perPage), perPage)
+  console.log(JSON.stringify({ annotationNodes: { total: expected, initial, jumped } }))
   return expected
 }
 
@@ -39,7 +54,7 @@ export async function startScrollBackground(app, page, path) {
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   try {
-  await page.getByRole('button', { name: '翻译设置', exact: true }).click()
+  await page.getByRole('button', { name: 'API 设置', exact: true }).click()
   await page.getByLabel('服务地址', { exact: true }).fill(`http://127.0.0.1:${server.address().port}/v1`)
   await page.getByLabel('API 密钥', { exact: true }).fill('performance-local-fixture-only')
   await page.getByLabel('模型名称', { exact: true }).fill('performance-fixture')

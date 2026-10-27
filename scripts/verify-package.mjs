@@ -13,6 +13,6 @@ for (const file of await walk('out')) {
   assert((await readFile(file)).equals(extractFile(join(resources, 'app.asar'), file)), `Packaged build mismatch: ${file}`)
   count++
 }
-for (const file of ['reader_engine.py', 'reader_layout.py', 'reader_replay.py', 'source-code.zip']) assert((await readFile(join('resources', file))).equals(await readFile(join(resources, file))), `Packaged resource mismatch: ${file}`)
-for (const file of await walk('skills/research-bilingual-translation')) assert((await readFile(file)).equals(await readFile(join(resources, file))), `Packaged skill mismatch: ${file}`)
-console.log(`Packaged build (${count} files), layout adapters, skill and source archive match.`)
+for (const file of ['source-code.zip', 'icon.png']) assert((await readFile(join('resources', file))).equals(await readFile(join(resources, file))), `Packaged resource mismatch: ${file}`)
+for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) assert((await readFile(file)).equals(await readFile(join(resources, file))), `Packaged notice mismatch: ${file}`)
+console.log(`Packaged build (${count} files), notices and source archive match.`)

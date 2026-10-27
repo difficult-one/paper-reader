@@ -63,7 +63,8 @@ const result = (await readFile(resultFile, 'utf8')).trim()
 assert.equal(result, 'success', `NSIS failed to extract ${basename(installer)}: ${result}. Probe files: ${directory}`)
 if (executionError) throw executionError
 const executableName = (config.build.win.executableName ?? config.build.executableName ?? config.build.productName) + '.exe'
-for (const file of [executableName, 'resources/app.asar', 'resources/reader_engine.py', 'resources/reader_layout.py', 'resources/skills/research-bilingual-translation/SKILL.md', 'resources/runtime/pdf2zh/runtime/python.exe', 'resources/runtime/pdf2zh/pdf2zh.exe', 'resources/runtime/pdf2zh/runtime/python313.dll', 'resources/runtime/pdf2zh/vc_redist15.x64.exe', 'resources/runtime/pdf2zh/vc_redist17.x64.exe']) await access(join(target, file))
+for (const file of [executableName, 'resources/app.asar', 'resources/source-code.zip', 'resources/LICENSE', 'resources/THIRD_PARTY_NOTICES.md']) await access(join(target, file))
+await assert.rejects(access(join(target, 'resources/runtime/pdf2zh')), 'The new installer must not include the removed translation runtime.')
 const report = { installer, target, executable: join(target, executableName), extractor: plugin, result, elapsedSeconds: +(Math.max(0, performance.now() - started) / 1000).toFixed(2) }
 await writeFile(join(directory, 'report.json'), JSON.stringify(report, null, 2))
 console.log(JSON.stringify(report, null, 2))

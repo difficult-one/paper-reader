@@ -7,7 +7,7 @@ export class PdfPageVisibility {
   private timer: ReturnType<typeof setTimeout> | undefined
   private moving = false
   private dragging: Element | null = null
-  private dragAnchor: { node: Node; offset: number; left: number; top: number; relocated: boolean } | null = null
+  private dragAnchor: { node: Node; offset: number; layer: Element; left: number; top: number; width: number; height: number; x: number; y: number; multiClick: boolean; repeatedDrag: boolean; relocated: boolean } | null = null
   direction = 1
   page = 1
   constructor(private root: HTMLElement, private settleMs = 130) {
@@ -60,7 +60,7 @@ export class PdfPageVisibility {
     const selection = window.getSelection()
     return Boolean(selection && !selection.isCollapsed && selection.rangeCount && selection.getRangeAt(0).intersectsNode(element))
   }
-  isDragging(element: Element | null) { return Boolean(element && element === this.dragging) }
+  isDragging(element: Element | null = this.dragging) { return Boolean(element && element === this.dragging) }
   private pointerDown = (event: Event) => {
     const target = event.target as Element
     const layer = target.closest?.('.textLayer')
@@ -71,29 +71,30 @@ export class PdfPageVisibility {
       const mouse = event as PointerEvent
       const caret = document.caretRangeFromPoint?.(mouse.clientX, mouse.clientY)
       if (mouse.button === 0 && !mouse.shiftKey && caret && layer.contains(caret.startContainer)) {
-        const bounds = this.root.getBoundingClientRect()
-        this.dragAnchor = { node: caret.startContainer, offset: caret.startOffset, left: bounds.left, top: bounds.top, relocated: false }
+        const bounds = layer.getBoundingClientRect()
+        this.dragAnchor = { node: caret.startContainer, offset: caret.startOffset, layer, left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height, x: mouse.clientX, y: mouse.clientY, multiClick: false, repeatedDrag: false, relocated: false }
       }
     }
   }
   private mouseMove = (event: MouseEvent) => {
     const anchor = this.dragAnchor
     if (!anchor || !(event.buttons & 1) || !anchor.node.isConnected) return
-    const bounds = this.root.getBoundingClientRect()
-    anchor.relocated ||= Math.abs(bounds.left - anchor.left) > .5 || Math.abs(bounds.top - anchor.top) > .5
-    if (!anchor.relocated) return
-    // Blink retains a screen-coordinate drag origin. A moving pane can put that
-    // origin in the other pane, even though the original text node is retained.
-    // After relocation, extend from the saved DOM caret instead of that origin.
+    const bounds = anchor.layer.getBoundingClientRect()
+    anchor.relocated ||= Math.abs(bounds.left - anchor.left) > .5 || Math.abs(bounds.top - anchor.top) > .5 || Math.abs(bounds.width - anchor.width) > .5 || Math.abs(bounds.height - anchor.height) > .5
+    const repeatedDrag = anchor.repeatedDrag ||= anchor.multiClick && Math.hypot(event.clientX - anchor.x, event.clientY - anchor.y) > 3
+    if (!anchor.relocated && !repeatedDrag) return
+    // Blink retains a screen-coordinate drag origin. Resizing and zoom previews
+    // can change the text geometry without moving the pane's origin.
     const caret = document.caretRangeFromPoint(event.clientX, event.clientY)
     if (caret && this.root.contains(caret.startContainer) && caret.startContainer.parentElement?.closest('.textLayer')) {
+      if (repeatedDrag) event.preventDefault()
       window.getSelection()?.setBaseAndExtent(anchor.node, anchor.offset, caret.startContainer, caret.startOffset)
     }
   }
   private mouseDown = (event: MouseEvent) => {
-    // Native word/paragraph drags already have a non-collapsed DOM anchor.
-    // Keep their selection granularity; only a single-click caret needs repair.
-    if (event.detail > 1) this.dragAnchor = null
+    // Rapid successive drags can be interpreted as a paragraph drag by Blink.
+    // A stationary double/triple click keeps the native word/paragraph behavior.
+    if (this.dragAnchor && event.detail > 1) this.dragAnchor.multiClick = true
   }
   private pointerEnd = () => { this.dragAnchor = null; this.dragging = null; this.selection() }
   destroy() {

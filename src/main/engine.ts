@@ -39,10 +39,10 @@ export async function inspectPdf(path: string): Promise<PdfInfo> {
 }
 
 function readableError(text: string): string {
-  if (/401|403|unauthorized|authentication|invalid.*key/i.test(text)) return 'API 密钥无效或没有访问此模型的权限，请检查翻译设置。'
-  if (/429|rate.?limit|quota|insufficient.*balance/i.test(text)) return '翻译服务限流或余额不足，请检查账户或降低每秒请求数后重试。'
+  if (/401|403|unauthorized|authentication|invalid.*key/i.test(text)) return 'API 密钥无效或没有访问此模型的权限，请检查API 设置。'
+  if (/429|rate.?limit|quota|insufficient.*balance/i.test(text)) return 'API 服务限流或余额不足，请检查账户或降低每秒请求数后重试。'
   if (/ScannedPDFError|(?:is|appears|detected as|mostly)\s+(?:a\s+)?scanned|scanned\s+(?:pdf|document|file)|(?:requires?|needs?)\s+OCR|no\s+(?:extractable\s+)?text\s+(?:found|detected)/i.test(text)) return '此 PDF 可能是扫描件，请先进行 OCR 文字识别后再翻译。'
-  if (/timeout|timed out|connection|connecterror|network|ENOTFOUND|fetch failed/i.test(text)) return '无法连接翻译服务或请求超时，请检查网络和服务地址后重试。'
+  if (/timeout|timed out|connection|connecterror|network|ENOTFOUND|fetch failed/i.test(text)) return '无法连接 API 服务或请求超时，请检查网络和服务地址后重试。'
   return text.slice(-800) || '翻译未能完成，请查看处理记录后重试。'
 }
 
@@ -165,7 +165,8 @@ export async function listModels(input: ProviderSettings): Promise<AvailableMode
 export async function testConnection(input: ServiceSettings): Promise<string> {
   const settings = validateSettings(input)
   try {
-    const body = prepareTranslationRequest({ model: settings.model, messages: [{ role: 'user', content: 'Translate into Simplified Chinese. Output only the translation: Connection successful.' }], stream: false }, settings)
+    const body: Record<string, unknown> = { model: settings.model, messages: [{ role: 'user', content: '请回复：连接成功。' }], stream: false }
+    if (new URL(settings.baseUrl).hostname === 'api.deepseek.com') { body.thinking = { type: 'enabled' }; body.reasoning_effort = settings.reasoningEffort ?? 'high' }
     const response = await fetch(`${settings.baseUrl}/chat/completions`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
       body: JSON.stringify(body),

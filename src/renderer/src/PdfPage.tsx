@@ -155,7 +155,7 @@ export const PdfPage = memo(function PdfPage({ pdf, raster, documentKey, number,
 
   useLayoutEffect(() => {
     // Changing a text layer's transform during a native drag resets Blink's
-    // selection anchor. Keep its scale stable and apply the new scale on release.
+    // selection anchor. PdfPane also retains its outer preview until release.
     if (!text.current || !textScale.current || visibility?.isDragging(slot.current)) return
     const ratio = scale / textScale.current
     text.current.style.transformOrigin = '0 0'; text.current.style.scale = ratio === 1 ? '' : String(ratio)
@@ -164,7 +164,8 @@ export const PdfPage = memo(function PdfPage({ pdf, raster, documentKey, number,
     <div className="pdf-paper" style={{ width: size.width * scale, height: size.height * scale }}>
       <div ref={host} className="canvas-holder" />
       <div ref={text} className="textLayer" />
-      <div className="annotation-layer">{annotations.flatMap(annotation => annotation.anchors.filter(anchor => anchor.page === number).flatMap(anchor => anchor.rects.map((rect, index) => <span key={`${annotation.id}-${index}`} data-annotation={annotation.id} className="highlight-mark" style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%`, backgroundColor: highlightColors[annotation.color] }} />)))}</div>
+      <div className="text-selection-layer" aria-hidden="true" />
+      <div className="annotation-layer">{(state.near || state.visible || state.selected) && annotations.flatMap(annotation => annotation.anchors.filter(anchor => anchor.page === number).flatMap(anchor => anchor.rects.map((rect, index) => <span key={`${annotation.id}-${index}`} data-annotation={annotation.id} className="highlight-mark" style={{ left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.width * 100}%`, height: `${rect.height * 100}%`, backgroundColor: highlightColors[annotation.color] }} />)))}</div>
       {error && <div className="page-error">{error}</div>}
     </div>
     <div className="page-caption">{number}</div>

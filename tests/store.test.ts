@@ -31,6 +31,15 @@ it('阅读状态保存后恢复；损坏配置明确报错且不静默覆盖', a
   await expect(store.settings()).rejects.toThrow(/记录无法读取/)
   expect(await readFile(join(dir, 'settings.json'), 'utf8')).toBe('broken-json')
 })
+it('上次打开的论文可在重启后恢复，也可以清除', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'reader-last-')); dirs.push(dir)
+  const store = new ReaderStore(dir, codec)
+  expect(await store.lastDocument()).toBeNull()
+  await store.saveLastDocument('C:/papers/example.pdf')
+  expect(await new ReaderStore(dir, codec).lastDocument()).toBe('C:/papers/example.pdf')
+  await store.saveLastDocument(null)
+  expect(await new ReaderStore(dir, codec).lastDocument()).toBeNull()
+})
 it('切换服务地址时，不能把上一服务的已存密钥留空复用', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'reader-store-')); dirs.push(dir)
   const store = new ReaderStore(dir, codec)

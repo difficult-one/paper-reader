@@ -82,10 +82,12 @@ describe('本地翻译进程', () => {
 })
 
 describe('API 连接测试', () => {
+  let receivedMessages: unknown
   async function serve(status: number) {
     server = createServer(async (request, response) => {
       let data = ''; for await (const part of request) data += part
       const body = JSON.parse(data)
+      receivedMessages = body.messages
       if (request.url !== '/v1/chat/completions' || request.headers.authorization !== 'Bearer test-secret-private' || body.model !== 'test-model') {
         response.writeHead(400); response.end(); return
       }
@@ -98,6 +100,7 @@ describe('API 连接测试', () => {
   }
   it('实际发送兼容 Chat Completions 请求并检查回复', async () => {
     expect(await testConnection(await serve(200))).toContain('成功')
+    expect(receivedMessages).toEqual([{ role: 'user', content: '请回复：连接成功。' }])
   })
   it('密钥错误和限流转换为可理解的错误', async () => {
     await expect(testConnection(await serve(401))).rejects.toThrow(/密钥/)

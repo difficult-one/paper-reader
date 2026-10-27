@@ -1,7 +1,7 @@
 {
   "name": "paper-reader",
-  "version": "0.1.11",
-  "description": "中英双栏论文阅读器",
+  "version": "0.1.16",
+  "description": "支持中英对照、联动阅读、批注与 API 询问的论文阅读器",
   "type": "module",
   "main": "out/main/index.js",
   "license": "AGPL-3.0-only",
@@ -10,19 +10,24 @@
     "dev": "electron-vite dev",
     "build": "tsc --noEmit && electron-vite build",
     "test": "vitest run",
-    "test:ui": "node scripts/smoke.mjs",
+    "test:ui": "node scripts/pair-smoke.mjs && node scripts/settings-smoke.mjs && node scripts/question-smoke.mjs && node scripts/shortcuts-smoke.mjs && node scripts/documents-smoke.mjs && node scripts/pair-drop-smoke.mjs && node scripts/outline-smoke.mjs",
+    "test:outline": "node scripts/outline-smoke.mjs",
+    "test:documents": "node scripts/documents-smoke.mjs",
+    "test:pair-drop": "node scripts/pair-drop-smoke.mjs",
     "test:pair": "node scripts/pair-smoke.mjs",
     "test:zoom": "node scripts/zoom-smoke.mjs --settle-profile --check-clear-scroll",
     "test:settings": "node scripts/settings-smoke.mjs",
+    "test:shortcuts": "node scripts/shortcuts-smoke.mjs",
     "test:scroll": "node scripts/scroll-smoke.mjs",
     "test:reader-cold": "node scripts/scroll-smoke.mjs --profile --cold-only --rounds=3 --foreground --cache-mib=64 --dpr=1.5",
+    "test:inspection": "node scripts/inspection-performance-smoke.mjs",
     "test:layout": "node scripts/test-layout.mjs",
     "test:replay": "node scripts/test-replay.mjs",
     "experiment:tokens": "node scripts/token-cache-experiment.mjs",
     "test:references": "node scripts/layout-smoke.mjs",
     "test:installer": "node scripts/installer-smoke.mjs",
     "runtime:prepare": "node scripts/prepare-runtime.mjs",
-    "package": "npm run build && node scripts/check-runtime.mjs && node scripts/make-icon.mjs && node scripts/package-source.mjs && node scripts/build-installer.mjs"
+    "package": "npm run build && node scripts/make-icon.mjs && node scripts/package-source.mjs && node scripts/build-installer.mjs"
   },
   "build": {
     "appId": "org.paperreader.desktop",
@@ -37,55 +42,12 @@
     ],
     "extraResources": [
       {
-        "from": "resources/reader_engine.py",
-        "to": "reader_engine.py"
-      },
-      {
-        "from": "resources/reader_layout.py",
-        "to": "reader_layout.py"
-      },
-      {
-        "from": "resources/reader_replay.py",
-        "to": "reader_replay.py"
-      },
-      {
-        "from": "skills/research-bilingual-translation",
-        "to": "skills/research-bilingual-translation"
-      },
-      {
-        "from": "resources/runtime/pdf2zh",
-        "to": "runtime/pdf2zh",
-        "filter": [
-          "**/*",
-          "!**/__pycache__/**",
-          "!**/*.pyc",
-          "!**/tests/**",
-          "!**/test/**",
-          "!site-packages/gradio/**",
-          "!site-packages/gradio_client/**",
-          "!site-packages/gradio_i18n/**",
-          "!无法运行请安装*.exe"
-        ]
-      },
-      {
-        "from": "resources/runtime/pdf2zh/无法运行请安装1_vc_redist15.x64.exe",
-        "to": "runtime/pdf2zh/vc_redist15.x64.exe"
-      },
-      {
-        "from": "resources/runtime/pdf2zh/无法运行请安装2_vc_redist17.x64.exe",
-        "to": "runtime/pdf2zh/vc_redist17.x64.exe"
-      },
-      {
         "from": "LICENSE",
         "to": "LICENSE"
       },
       {
         "from": "THIRD_PARTY_NOTICES.md",
         "to": "THIRD_PARTY_NOTICES.md"
-      },
-      {
-        "from": "resources/runtime-manifest.json",
-        "to": "runtime-manifest.json"
       },
       {
         "from": "resources/source-code.zip",
@@ -116,8 +78,7 @@
       "createDesktopShortcut": true,
       "deleteAppDataOnUninstall": false,
       "differentialPackage": false,
-      "useZip": true,
-      "include": "resources/installer.nsh"
+      "useZip": true
     }
   },
   "dependencies": {

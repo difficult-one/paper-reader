@@ -25,7 +25,6 @@ export function ImportPair({ paths, close, open }: Props) {
       const failure = results.find(result => !result.ok)
       if (failure && !failure.ok) { setError(failure.error); return }
       const next = results.map(result => result.ok ? result.value : null)
-      if (next.length === 2 && next[0]?.language === 'zh' && next[1]?.language === 'en') next.reverse()
       setFiles([next[0] ?? null, next[1] ?? null])
     }).catch(error => { if (active) setError(String(error)) }).finally(() => { if (active) setBusy(false) })
     return () => { active = false }
@@ -57,12 +56,12 @@ export function ImportPair({ paths, close, open }: Props) {
     }
   }}>
     <section ref={dialog} tabIndex={-1} className="settings-modal pair-modal" role="dialog" aria-modal="true" aria-labelledby="pair-heading" aria-describedby="pair-description">
-      <header className="modal-header"><div className="modal-icon"><PanelsLeftRight size={21} /></div><div><h2 id="pair-heading">导入中英对照</h2><p id="pair-description">使用已有的两个版本，直接开始阅读</p></div><button className="icon-button" aria-label="关闭导入" onClick={close} disabled={busy}><X size={20} /></button></header>
+      <header className="modal-header"><div className="modal-icon"><PanelsLeftRight size={21} /></div><div><h2 id="pair-heading">导入对照论文</h2><p id="pair-description">选择任意两份 PDF，左右对照阅读</p></div><button className="icon-button" aria-label="关闭导入" onClick={close} disabled={busy}><X size={20} /></button></header>
       <div className="pair-body">
-        <p className="pair-intro">确认两侧文件。阅读与批注均保存在本机，无需配置翻译服务。</p>
+        <p className="pair-intro">确认两侧文件，支持任意语言组合。阅读与批注均保存在本机，无需配置 API。</p>
         {files.map((file, side) => <div className="pair-file" key={side}>
-          <div className="pair-file-label"><span className="language-tag">{side === 0 ? 'EN' : '中'}</span><strong>{side === 0 ? '左侧 · 英文原文' : '右侧 · 中文版本'}</strong></div>
-          <div className="pair-file-content"><FileText size={22} /><div>{file ? <><strong title={file.path}>{file.name}</strong><small title={file.path}>{file.pages} 页 · {file.path}</small></> : <span>选择{side === 0 ? '英文原文' : '已有中文版本'} PDF</span>}</div><button data-first-focus={side === 0 ? true : undefined} className="button secondary small" aria-label={side === 0 ? '选择英文 PDF' : '选择中文 PDF'} disabled={busy} onClick={() => void choose(side)}><FolderOpen size={15} />{file ? '更换' : '选择文件'}</button></div>
+          <div className="pair-file-label"><span className="language-tag">{side === 0 ? '左' : '右'}</span><strong>{side === 0 ? '左侧论文' : '右侧论文'}</strong></div>
+          <div className="pair-file-content"><FileText size={22} /><div>{file ? <><strong title={file.path}>{file.name}</strong><small title={file.path}>{file.pages} 页 · {file.path}</small></> : <span>选择{side === 0 ? '左侧' : '右侧'} PDF</span>}</div><button data-first-focus={side === 0 ? true : undefined} className="button secondary small" aria-label={side === 0 ? '选择左侧 PDF' : '选择右侧 PDF'} disabled={busy} onClick={() => void choose(side)}><FolderOpen size={15} />{file ? '更换' : '选择文件'}</button></div>
         </div>)}
         <div className="pair-options"><button className="button quiet small" disabled={busy || (!files[0] && !files[1])} aria-label="交换左右文件" onClick={() => { setFiles(([left, right]) => [right, left]); setError('') }}><ArrowLeftRight size={15} />交换左右</button><span>也可同时拖入两份 PDF</span></div>
         {files[0] && files[1] && files[0].pages !== files[1].pages && <p className="pair-page-hint">两份文件页数不同，将分别阅读。你仍可独立翻页、缩放和批注。</p>}

@@ -15,7 +15,7 @@ for (const directory of ['cmaps', 'standard_fonts', 'wasm']) {
 }
 
 export default defineConfig({
-  main: { plugins: [externalizeDepsPlugin(), translationProvenance], build: { rollupOptions: { input: { index: 'src/main/index.ts', 'document-context-worker': 'src/main/document-context-worker.ts', 'pdf-raster-worker': 'src/main/pdf-raster-worker.ts', 'pdf-raster-process': 'src/main/pdf-raster-process.ts' } } } },
+  main: { plugins: [externalizeDepsPlugin(), translationProvenance], build: { rollupOptions: { input: { index: 'src/main/index.ts', 'document-context-worker': 'src/main/document-context-worker.ts', 'pdf-inspection-worker': 'src/main/pdf-inspection-worker.ts', 'pdf-raster-worker': 'src/main/pdf-raster-worker.ts', 'pdf-raster-process': 'src/main/pdf-raster-process.ts' } } } },
   preload: { plugins: [externalizeDepsPlugin()], build: { rollupOptions: { input: 'src/preload/index.ts', output: { format: 'cjs', entryFileNames: 'index.cjs' } } } },
   renderer: { root: 'src/renderer', plugins: [react()] }
 })

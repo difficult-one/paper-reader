@@ -1,11 +1,11 @@
 import { app, BrowserWindow, ipcMain, protocol, net, safeStorage, dialog, shell, Menu, utilityProcess, clipboard } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { access, mkdir } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import { join, resolve, dirname, isAbsolute, extname, basename, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { ReaderStore } from './store'
-import { LibraryService, ENGINE_VERSION } from './library'
-import { inspectPdf, listModels, testConnection } from './engine'
+import { LibraryService } from './library'
+import { listModels, testConnection } from './engine'
 import type { ProviderSettings, PublicSettings, Result, ServiceSettings } from '../shared/types'
 import { sanitizeLog } from '../shared/core'
 import { mkdirSync } from 'node:fs'
@@ -13,6 +13,7 @@ import { AnnotationStore } from './annotations'
 import { DocumentContext } from './document-context'
 import { QuestionService } from './question-service'
 import { PdfRasterService } from './pdf-raster-service'
+import { PdfInspectionService } from './pdf-inspection-service'
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'paper-pdf', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
@@ -41,9 +42,6 @@ if (customData) {
 }
 await app.whenReady()
 await mkdir(app.getPath('userData'), { recursive: true })
-const runtimeRoot = app.isPackaged ? join(process.resourcesPath, 'runtime', 'pdf2zh') : resolve(here, '../../resources/runtime/pdf2zh')
-const executable = join(runtimeRoot, 'runtime', 'python.exe')
-const engineEntry = app.isPackaged ? join(process.resourcesPath, 'reader_engine.py') : resolve(here, '../../resources/reader_engine.py')
 const store = new ReaderStore(app.getPath('userData'), {
   encrypt(value) {
     if (!safeStorage.isEncryptionAvailable()) throw new Error('系统密钥加密不可用，无法保存 API 密钥。')
@@ -51,7 +49,8 @@ const store = new ReaderStore(app.getPath('userData'), {
   },
   decrypt(value) { return safeStorage.decryptString(value) }
 })
-library = new LibraryService(store, { executable, prefixArgs: [engineEntry, runtimeRoot] }, registerPdf, job => { if (window && !window.isDestroyed()) window.webContents.send('reader:job', job) })
+const inspector = new PdfInspectionService(new URL('./pdf-inspection-worker.js', import.meta.url))
+library = new LibraryService(store, null, registerPdf, () => {}, undefined, path => inspector.inspect(path))
 const annotations = new AnnotationStore(store.directory)
 // Resolve the worker beside this entry, since DocumentContext is shared with
 // the worker and Rollup may place that module in a chunks/ directory.
@@ -94,14 +93,18 @@ const handle = <T>(name: string, action: (...args: any[]) => Promise<T> | T) => 
   })
 }
 const withKey = async <T extends ProviderSettings>(settings: T) => ({ ...settings, ...await store.credentials(settings) })
-handle('info', async () => ({ version: app.getVersion(), engineVersion: ENGINE_VERSION, runtimeReady: await access(executable).then(() => true, () => false), dataPath: store.directory, initialPath: process.argv.find(arg => !arg.startsWith('-') && extname(arg).toLowerCase() === '.pdf') }))
+handle('info', async () => ({ version: app.getVersion(), dataPath: store.directory, initialPath: process.argv.find(arg => !arg.startsWith('-') && extname(arg).toLowerCase() === '.pdf') ?? await store.lastDocument() ?? undefined }))
+handle('save-last-document', (path: string | null) => {
+  if (path !== null && (typeof path !== 'string' || !isAbsolute(path) || extname(path).toLowerCase() !== '.pdf')) throw new Error('论文路径无效。')
+  return store.saveLastDocument(path)
+})
 handle('open-pdf-raster', (owner: string, url: string) => raster.open(owner, url))
 handle('render-pdf-raster', (owner: string, request: import('../shared/pdf-raster').PdfRasterRequest) => raster.render(owner, request))
 handle('prioritize-pdf-raster', (owner: string, id: string, priority: number) => raster.prioritize(owner, id, priority))
 handle('cancel-pdf-raster', (owner: string, id: string) => raster.cancel(owner, id))
 handle('close-pdf-raster', (owner: string) => raster.close(owner))
 handle('settings', async () => redact(await store.settings()))
-handle('save-settings', async (settings: ServiceSettings) => { await library.saveSettings(settings); return redact(await store.settings()) })
+handle('save-settings', async (settings: ServiceSettings) => { await store.saveSettings(settings); return redact(await store.settings()) })
 handle('test-connection', async (settings: ServiceSettings) => testConnection(await withKey(settings)))
 handle('list-models', async (settings: ProviderSettings) => listModels(await withKey(settings)))
 handle('open-pdf', async (path?: string) => {
@@ -122,17 +125,15 @@ handle('select-pdf', async (path?: string) => {
     path = selected.filePaths[0]
   }
   if (typeof path !== 'string' || extname(path).toLowerCase() !== '.pdf') throw new Error('请选择 PDF 文件。')
-  return { path, name: basename(path), ...await inspectPdf(path) }
+  return { path, name: basename(path), ...await inspector.inspect(path) }
 })
 handle('import-pair', async (originalPath: string, translatedPath: string) => { const session = await library.importPair(originalPath, translatedPath); prepareQuestions(session.id); prepareQuestions(session.id, true); return session })
-handle('translate', (id: string) => library.translate(id))
-handle('cancel', (id: string) => library.cancel(id))
-handle('current-job', () => library.getJob())
+handle('import-side', async (id: string, side: 'left' | 'right', source: string | { documentId: string }) => { const session = await library.importSide(id, side, source); prepareQuestions(session.id); if (session.translatedUrl) prepareQuestions(session.id, true); return session })
 handle('save-reading', (id, state) => { library.getSession(id); return store.saveReading(id, state) })
 handle('export', async (id: string) => {
   const session = library.getSession(id)
   await library.translatedFile(id)
-  const selected = await dialog.showSaveDialog(window!, { title: '另存中文 PDF', defaultPath: join(dirname(session.path), `${basename(session.name, extname(session.name))}.中文.pdf`), filters: [{ name: 'PDF 文件', extensions: ['pdf'] }] })
+  const selected = await dialog.showSaveDialog(window!, { title: '另存右侧 PDF', defaultPath: join(dirname(session.path), session.translatedName ?? `${basename(session.name, extname(session.name))}.右侧.pdf`), filters: [{ name: 'PDF 文件', extensions: ['pdf'] }] })
   if (selected.canceled || !selected.filePath) return null
   await library.saveTranslation(id, selected.filePath)
   return selected.filePath
@@ -183,7 +184,7 @@ app.on('window-all-closed', () => app.quit())
 app.on('before-quit', event => {
   if (quitting) return
   event.preventDefault(); quitting = true
-  Promise.allSettled([library.shutdown(), questions.shutdown(), raster.shutdown(), annotations.flush(), store.flush()]).finally(() => app.quit())
+  Promise.allSettled([library.shutdown(), inspector.shutdown(), questions.shutdown(), raster.shutdown(), annotations.flush(), store.flush()]).finally(() => app.quit())
 })
 }
 void start().catch(error => { console.error(error); dialog.showErrorBox('论文阅读器启动失败', String(error)); app.exit(1) })

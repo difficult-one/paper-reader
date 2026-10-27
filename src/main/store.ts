@@ -26,12 +26,19 @@ export class ReaderStore {
     try { await operation } finally { if (this.pending.get(path) === operation) this.pending.delete(path) }
   }
   async flush(): Promise<void> { while (this.pending.size) await Promise.allSettled([...this.pending.values()]) }
+  async lastDocument(): Promise<string | null> {
+    const value = await readJson<{ path: string | null } | null>(join(this.directory, 'last-document.json'), null)
+    return typeof value?.path === 'string' ? value.path : null
+  }
+  async saveLastDocument(path: string | null): Promise<void> {
+    await this.write(join(this.directory, 'last-document.json'), { path })
+  }
   async settings(): Promise<ServiceSettings> {
     const saved = await readJson<({ baseUrl: string; model: string; qps: number; reasoningEffort?: 'low' | 'high' | 'max'; translationMode?: 'economy' | 'manual'; encryptedKey: string }) | null>(join(this.directory, 'settings.json'), null)
     if (!saved) return { baseUrl: '', model: '', apiKey: '', qps: 2, translationMode: 'economy' }
     let apiKey: string
     try { apiKey = this.codec.decrypt(Buffer.from(saved.encryptedKey, 'base64')) }
-    catch { throw new Error('API 密钥无法解密，请在翻译设置中重新配置。') }
+    catch { throw new Error('API 密钥无法解密，请在API 设置中重新配置。') }
     return validateSettings({ baseUrl: saved.baseUrl, model: saved.model, qps: saved.qps, apiKey, reasoningEffort: saved.reasoningEffort, translationMode: saved.translationMode })
   }
   async credentials(input: ProviderSettings): Promise<ProviderSettings> {

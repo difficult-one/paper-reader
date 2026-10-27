@@ -65,7 +65,7 @@ export interface TranslationJob {
   startedAt: number; finishedAt?: number; logs: string[]; error?: string; result?: DocumentSession;
   usage?: TranslationUsage;
 }
-export interface AppInfo { version: string; engineVersion: string; runtimeReady: boolean; dataPath: string; initialPath?: string }
+export interface AppInfo { version: string; dataPath: string; initialPath?: string }
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 export interface ReaderBridge {
   openPdfRaster(owner: string, url: string): Promise<Result<void>>;
@@ -81,14 +81,12 @@ export interface ReaderBridge {
   openPdf(path?: string): Promise<Result<DocumentSession | null>>;
   selectPdf(path?: string): Promise<Result<PdfChoice | null>>;
   importPair(originalPath: string, translatedPath: string): Promise<Result<DocumentSession>>;
-  startTranslation(documentId: string): Promise<Result<TranslationJob>>;
-  cancelTranslation(jobId: string): Promise<Result<void>>;
-  currentJob(): Promise<Result<TranslationJob | null>>;
+  importSide(documentId: string, side: 'left' | 'right', source: string | { documentId: string }): Promise<Result<DocumentSession>>;
   saveReading(documentId: string, state: ReadingState): Promise<Result<void>>;
+  saveLastDocument(path: string | null): Promise<Result<void>>;
   exportTranslation(documentId: string): Promise<Result<string | null>>;
   showDataFolder(): Promise<Result<void>>;
   pathForFile(file: File): string;
-  onJob(listener: (job: TranslationJob) => void): () => void;
   onBeforeClose(listener: () => Promise<void>): () => void;
   annotations(documentId: string): Promise<Result<PaperAnnotation[]>>;
   addAnnotation(documentId: string, draft: AnnotationDraft): Promise<Result<PaperAnnotation>>;

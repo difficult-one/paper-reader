@@ -33,16 +33,16 @@ try {
   const url = new URL(page.url()); url.searchParams.set('pdf-cache-mib', '64')
   await page.goto(url.href); await page.locator(firstText).first().waitFor({ timeout: 30000 })
   assert(Math.abs(await page.evaluate(() => devicePixelRatio) - 2) < 1e-6, 'selection fixture must retain actual DPR 2')
-  await page.getByRole('button', { name: '导入中英对照', exact: true }).click()
+  await page.getByRole('button', { name: '导入对照论文', exact: true }).click()
   await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }) }, translated)
-  await page.getByRole('dialog').getByRole('button', { name: '选择中文 PDF', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: '选择右侧 PDF', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: '开始对照阅读', exact: true }).click()
   await page.locator('[data-side="right"] .textLayer span').first().waitFor({ timeout: 30000 })
   assert.match(await page.locator(firstText).first().innerText(), /Original/)
   assert.match(await page.locator('[data-side="right"] [data-page="1"] .textLayer span').first().innerText(), /Translated/)
   check('相同原始 PDF 指纹的原译文文字缓存隔离')
   const jump = async number => {
-    await page.getByLabel('英文页码', { exact: true }).fill(String(number)); await page.getByLabel('英文页码', { exact: true }).press('Enter')
+    await page.getByLabel('左侧页码', { exact: true }).fill(String(number)); await page.getByLabel('左侧页码', { exact: true }).press('Enter')
     await page.locator(`[data-side="left"] [data-page="${number}"] .textLayer span`).first().waitFor({ timeout: 15000 })
   }
   for (let number = 1; number <= 4; number++) {
@@ -55,7 +55,7 @@ try {
     assert(result.text.left >= result.paper.left - 2 && result.text.top >= result.paper.top - 2 && result.text.right <= result.paper.right + 2 && result.text.bottom <= result.paper.bottom + 2, `rotated text must stay aligned: ${JSON.stringify(result)}`)
     check(`旋转 ${result.rotation} 度文字层边界`, result)
   }
-  await page.getByLabel('英文缩放').selectOption('0.5'); await jump(1)
+  await page.getByLabel('左侧缩放').selectOption('0.5'); await jump(1)
   await page.locator('[data-side="left"] [data-page="2"] .textLayer span').first().waitFor()
   const quote = await page.evaluate(() => {
     document.querySelector('[data-side="left"] .pdf-scroll').focus({ preventScroll: true })
@@ -79,31 +79,41 @@ try {
   }
   check('跨页选区经历 300 页缓存压力与往返仍保留', { maxRasterBytes: Math.max(...budgets) })
   await page.locator('[data-side="left"] .pdf-scroll').evaluate(root => { root.scrollTop = 0 })
-  await page.getByLabel('英文缩放').selectOption('1.25')
+  await page.getByLabel('左侧缩放').selectOption('1.25')
   await page.waitForTimeout(500)
   assert.equal(await page.evaluate(() => getSelection().toString()), quote)
   assert(await page.evaluate(() => window.selectionAnchor.isConnected))
   check('活动跨页选区在缩放后保留原文字节点')
   await page.evaluate(() => getSelection().removeAllRanges())
-  await page.waitForFunction(() => document.querySelector('[data-side="left"] [data-page="1"] .textLayer').style.scale === '')
-  check('清除选区后恢复精确文字层')
+  await page.waitForFunction(() => {
+    const slot = document.querySelector('[data-side="left"] [data-page="1"]')
+    const layer = slot.querySelector('.textLayer')
+    const effectiveScale = parseFloat(layer.style.getPropertyValue('--total-scale-factor')) * parseFloat(layer.style.scale || '1')
+    return Math.abs(effectiveScale - parseFloat(slot.style.width) / 595) < .001 && !slot.querySelector('.text-selection-layer > span')
+  })
+  check('清除选区后文字层保持对齐且临时高亮清除')
   for (const zoom of ['3', '2.5', '3', '1', '3']) {
-    await page.getByLabel('英文缩放').selectOption(zoom)
+    await page.getByLabel('左侧缩放').selectOption(zoom)
     await page.waitForFunction(() => {
       const slot = document.querySelector('[data-side="left"] [data-page="1"]')
       const layer = slot.querySelector('.textLayer')
-      return slot.querySelector('canvas')?.dataset.quality === 'clear' && Math.abs(parseFloat(layer.style.getPropertyValue('--total-scale-factor')) - parseFloat(slot.style.width) / 595) < .001
+      const effectiveScale = parseFloat(layer.style.getPropertyValue('--total-scale-factor')) * parseFloat(layer.style.scale || '1')
+      return !slot.closest('.pdf-pages-content').style.transform && slot.querySelector('canvas')?.dataset.quality === 'clear' && Math.abs(effectiveScale - parseFloat(slot.style.width) / 595) < .001
     }, undefined, { timeout: 15000 })
     const stats = await page.evaluate(() => window.__pdfPerformance)
     assert(stats.rasterBytes <= 64 * 1024 * 1024)
     assert(await page.locator('canvas').evaluateAll(canvases => canvases.every(canvas => canvas.width * canvas.height <= 8_000_000)))
   }
   check('DPR 2 与 300% 连续缩放不超 64 MiB 缓存预算且绘制可继续')
-  await page.getByLabel('英文缩放').selectOption('1'); await jump(1)
+  // Start the first drag while this zoom can still be settling. The preceding
+  // loop separately verifies fully committed 300% layouts and cache pressure.
+  await page.getByLabel('左侧缩放').selectOption('1'); await jump(1)
   for (const side of ['left', 'right']) {
     await page.waitForFunction(side => {
       const slot = document.querySelector(`[data-side="${side}"] [data-page="1"]`)
-      return Math.abs(parseFloat(slot.querySelector('.textLayer').style.getPropertyValue('--total-scale-factor')) - parseFloat(slot.style.width) / 595) < .001
+      const layer = slot.querySelector('.textLayer')
+      const effectiveScale = parseFloat(layer.style.getPropertyValue('--total-scale-factor')) * parseFloat(layer.style.scale || '1')
+      return Math.abs(effectiveScale - parseFloat(slot.style.width) / 595) < .001
     }, side, { timeout: 15000 })
     const span = page.locator(`[data-side="${side}"] [data-page="1"] .textLayer span`).first(); const box = await span.boundingBox()
     if (side === 'right') {
